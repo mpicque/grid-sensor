@@ -3,7 +3,7 @@ using System.Linq;
 using System;
 using UnityEngine;
 using NaughtyAttributes;
-using MBaske.Sensors.Grid;
+using Sensors.Grid;
 using Random = UnityEngine.Random;
 
 namespace MBaske.Dogfight

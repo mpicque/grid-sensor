@@ -1,0 +1,16 @@
+﻿{
+  "name": "net.mpicque.mlagents-sensors",
+  "version": "0.0.1",
+  "displayName": "MLAgents Sensors",
+  "description": "MLAgents Sensors",
+  "unity": "2022.3",
+  "author": {
+    "name": "Maxime Picque",
+    "email": "maxime.picque@gmail.com",
+    "url": "https://github.com/mpicque"
+  },
+  "dependencies": {
+    "com.unity.ml-agents": "3.0.0-exp.1",
+    "com.dbrizov.naughtyattributes" : "2.1.4"
+  }
+}

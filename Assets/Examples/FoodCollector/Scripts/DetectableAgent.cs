@@ -1,4 +1,4 @@
-using MBaske.Sensors.Grid;
+using Sensors.Grid;
 
 public class DetectableAgent : DetectableGameObject
 {

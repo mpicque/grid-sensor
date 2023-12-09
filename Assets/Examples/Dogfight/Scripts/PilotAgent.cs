@@ -2,7 +2,7 @@ using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
-using MBaske.Sensors.Grid;
+using Sensors.Grid;
 using MBaske.MLUtil;
 using System.Collections.Generic;
 

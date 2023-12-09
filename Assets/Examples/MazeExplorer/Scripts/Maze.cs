@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using MBaske.Sensors.Grid;
+using Sensors.Grid;
 using UnityEngine;
 
 namespace MBaske.MazeExplorer

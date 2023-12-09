@@ -1,7 +1,6 @@
 using UnityEngine;
-using Unity.MLAgentsExamples;
 
-public class FoodCollectorArea : Area
+public class FoodCollectorArea : MonoBehaviour
 {
     public GameObject food;
     public GameObject badFood;
@@ -37,9 +36,5 @@ public class FoodCollectorArea : Area
 
         CreateFood(numFood, food);
         CreateFood(numBadFood, badFood);
-    }
-
-    public override void ResetArea()
-    {
     }
 }
