@@ -6,93 +6,83 @@ using UnityEngine;
 namespace Sensors.Grid
 {
     /// <summary>
-    /// Stores shape points for a <see cref="DetectableGameObject"/>
-    /// and manages levels of detail.
+    ///     Stores shape points for a <see cref="DetectableGameObject" />
+    ///     and manages levels of detail.
     /// </summary>
     [Serializable]
     public class GameObjectShape
     {
-        /// <summary>
-        /// Invoked on inspector changes.
-        /// </summary>
-        public event Action RequireScanEvent;
-
-
-        #region Point Collections
-
-        // Created by ShapeScanUtil.
-        [SerializeField, HideInInspector]
-        private List<ScanResultLOD> m_ScanResultsByLOD;
-        // References ScanResultLOD[LOD].LocalPoints
-        [SerializeField, HideInInspector]
-        private List<Vector3> m_LocalPoints;
-        // On demand: m_LocalPoints -> world.
-        [SerializeField, HideInInspector]
-        private List<Vector3> m_WorldPoints = new List<Vector3>();
-
-        /// <summary>
-        /// Whether there are any points stored.
-        /// </summary>
-        /// <returns></returns>
-        private bool HasPoints()
-        {
-            return m_ScanResultsByLOD != null && m_ScanResultsByLOD.Count > 0;
-        }
-
-        /// <summary>
-        /// Removes all shape points.
-        /// </summary>
-        private void Clear()
-        {
-            if (HasPoints())
-            {
-                m_ScanResultsByLOD.Clear();
-                m_WorldPoints.Clear();
-                m_LocalPoints.Clear();
-            }
-        }
-
-        #endregion
-
-
-        /// <summary>
-        /// Whether to merge disconnected colliders into a 
-        /// single volume when scanning and calculating LODs.
-        /// </summary>
-        public bool Merge
-        {
-            get { return m_MergeDisconnected; }
-        }
         [SerializeField]
         [EnableIf("IsNotPlaying")]
         [OnValueChanged(nameof(OnMergeChange))]
         [AllowNesting]
         [Tooltip("Whether to merge disconnected colliders into a " +
-            "single volume when scanning and calculating LODs.")]
+                 "single volume when scanning and calculating LODs.")]
         private bool m_MergeDisconnected;
 
-        private void OnMergeChange()
-        {
-            RequireScanEvent.Invoke();
-        }
-
-
-
-        /// <summary>
-        /// Whether to flatten the object's shape for 2D detection.
-        /// Points will be projected onto the world's XZ-plane.
-        /// </summary>
-        public bool Flatten
-        {
-            get { return m_Flatten; }
-        }
         [SerializeField]
         [EnableIf("IsNotPlaying")]
         [OnValueChanged(nameof(OnFlattenChange))]
         [AllowNesting]
         [Tooltip("Flatten shape points for 2D detection." +
-            "\n2D LOD is fixed at Scan LOD value.")]
+                 "\n2D LOD is fixed at Scan LOD value.")]
         private bool m_Flatten;
+
+        [SerializeField]
+        [EnableIf(EConditionOperator.And, "IsNotPlaying", "Is3D")]
+        [OnValueChanged(nameof(OnProjectionChange))]
+        [AllowNesting]
+        [Tooltip("Project shape points onto collider walls." +
+                 "\nWorks best with single convex colliders.")]
+        [Range(0, 1)]
+        private float m_Projection;
+
+        [SerializeField] [ReadOnly] [AllowNesting] [Tooltip("Number of detectable points\nat selected Gizmo LOD.")]
+        private int m_PointCount;
+
+        [SerializeField]
+        [Tooltip("Edit to show different grid resolutions."
+                 + "\nThis is meant for testing purposes and doesn't reflect the"
+                 + " grid settings applied to the sensor.\nGizmo grid cells are drawn"
+                 + " in world space.\n0: Grid draw off. Disabled at runtime.")]
+        [Min(0)]
+        private float m_DrawGrid;
+
+
+        /// <summary>
+        ///     Whether to merge disconnected colliders into a
+        ///     single volume when scanning and calculating LODs.
+        /// </summary>
+        public bool Merge => m_MergeDisconnected;
+
+
+        /// <summary>
+        ///     Whether to flatten the object's shape for 2D detection.
+        ///     Points will be projected onto the world's XZ-plane.
+        /// </summary>
+        public bool Flatten => m_Flatten;
+
+
+        /// <summary>
+        ///     The amount by which points are being projected onto the
+        ///     collider walls. Works best with single convex colliders.
+        /// </summary>
+        public float Projection => m_Projection;
+
+
+        // Inspector flags for NaughtyAttributes.
+        private bool IsNotPlaying => !Application.isPlaying;
+        private bool Is3D => !m_Flatten;
+
+        /// <summary>
+        ///     Invoked on inspector changes.
+        /// </summary>
+        public event Action RequireScanEvent;
+
+        private void OnMergeChange()
+        {
+            RequireScanEvent.Invoke();
+        }
 
         private void OnFlattenChange()
         {
@@ -102,104 +92,15 @@ namespace Sensors.Grid
             RequireScanEvent.Invoke();
         }
 
-
-        #region LOD
-
-        // The highest available LOD given the current Scan LOD setting.
-        [SerializeField, HideInInspector]
-        private int m_MaxLOD;
-
-        // The LOD used for selecting a point list from the scan result.
-        [SerializeField, HideInInspector]
-        private int m_SelectedLOD;
-
-
-        /// <summary>
-        /// The LOD applied to the <see cref="ShapeScanUtil"/>.
-        /// </summary>
-        public int ScanLOD
-        {
-            get { return m_ScanLOD; }
-        }
-        [SerializeField]
-        [EnableIf("IsNotPlaying")]
-        [OnValueChanged(nameof(OnScanLODChange))]
-        [AllowNesting]
-        [Tooltip("Scan level of detail.")]
-        [Range(0, 7)] private int m_ScanLOD = 0;
-
-        private void OnScanLODChange()
-        {
-            // Gizmo LOD follows Scan LOD inspector value.
-            m_GizmoLOD = m_ScanLOD; 
-            RequireScanEvent.Invoke();
-
-            OnGizmoLODChange();
-        }
-
-        // The LOD used for highlighting Gizmo points.
-        [SerializeField]
-        [EnableIf(EConditionOperator.And, "IsNotPlaying", "Is3D")]
-        [OnValueChanged(nameof(OnGizmoLODChange))]
-        [AllowNesting]
-        [Tooltip("Gizmo level of detail <= Scan LOD.")]
-        [Range(0, 7)] private int m_GizmoLOD = 0;
-
-        private void OnGizmoLODChange()
-        {
-            // Gizmo LOD can't be higher than Scan LOD.
-            m_GizmoLOD = Mathf.Clamp(m_GizmoLOD, 0, m_ScanLOD);
-            // Need to select matching point list after 
-            // inspector settings change.
-            SetSelectedLOD(m_GizmoLOD);
-        }
-
-        #endregion
-
-
-        /// <summary>
-        /// The amount by which points are being projected onto the 
-        /// collider walls. Works best with single convex colliders.
-        /// </summary>
-        public float Projection
-        {
-            get { return m_Projection; }
-        }
-        [SerializeField]
-        [EnableIf(EConditionOperator.And, "IsNotPlaying", "Is3D")]
-        [OnValueChanged(nameof(OnProjectionChange))]
-        [AllowNesting]
-        [Tooltip("Project shape points onto collider walls." +
-            "\nWorks best with single convex colliders.")]
-        [Range(0, 1)] private float m_Projection;
-
         private void OnProjectionChange()
         {
             // TODO Shouldn't need to invoke new scan for changing projection.
             RequireScanEvent.Invoke();
         }
 
-        [SerializeField]
-        [ReadOnly]
-        [AllowNesting]
-        [Tooltip("Number of detectable points\nat selected Gizmo LOD.")]
-        private int m_PointCount;
-
-        [SerializeField]
-        [Tooltip("Edit to show different grid resolutions."
-            + "\nThis is meant for testing purposes and doesn't reflect the"
-            + " grid settings applied to the sensor.\nGizmo grid cells are drawn"
-            + " in world space.\n0: Grid draw off. Disabled at runtime.")]
-        [Min(0)] private float m_DrawGrid = 0;
-
-
-        // Inspector flags for NaughtyAttributes.
-        private bool IsNotPlaying => !Application.isPlaying;
-        private bool Is3D => !m_Flatten;
-
 
         /// <summary>
-        /// Resets the <see cref="GameObjectShape"/>.
+        ///     Resets the <see cref="GameObjectShape" />.
         /// </summary>
         public void Reset()
         {
@@ -216,10 +117,10 @@ namespace Sensors.Grid
         }
 
         /// <summary>
-        /// Handles the <see cref="ShapeScanUtil"/> result.
+        ///     Handles the <see cref="ShapeScanUtil" /> result.
         /// </summary>
         /// <param name="maxLOD">Highest LOD in the scan result</param>
-        /// <param name="result">List of <see cref="ScanResultLOD"/> instances</param>
+        /// <param name="result">List of <see cref="ScanResultLOD" /> instances</param>
         public void OnScanResult(int maxLOD, List<ScanResultLOD> result)
         {
             Clear();
@@ -232,10 +133,10 @@ namespace Sensors.Grid
         }
 
         /// <summary>
-        /// Returns a list of world space points for a specific LOD, 
-        /// depending on the distance between sensor and gameobject.
+        ///     Returns a list of world space points for a specific LOD,
+        ///     depending on the distance between sensor and gameobject.
         /// </summary>
-        /// <param name="transform"><see cref="DetectableGameObject"/> transform</param>
+        /// <param name="transform"><see cref="DetectableGameObject" /> transform</param>
         /// <param name="normDistance">Normalized distance</param>
         /// <returns>List of points in world space</returns>
         public IList<Vector3> GetWorldPointsAtDistance(Transform transform, float normDistance)
@@ -248,13 +149,14 @@ namespace Sensors.Grid
 
         private IList<Vector3> GetWorldPoints(Transform transform)
         {
-            Matrix4x4 matrix = transform.localToWorldMatrix;
+            var matrix = transform.localToWorldMatrix;
             m_WorldPoints.Clear();
 
             foreach (var point in m_LocalPoints)
             {
                 m_WorldPoints.Add(matrix.MultiplyPoint3x4(point));
             }
+
             return m_WorldPoints;
         }
 
@@ -274,27 +176,26 @@ namespace Sensors.Grid
 
 
         /// <summary>
-        /// Draws all shape points and highlights points for the selected LOD.
-        /// Draws optional debug grid around highlighted points.
+        ///     Draws all shape points and highlights points for the selected LOD.
+        ///     Draws optional debug grid around highlighted points.
         /// </summary>
-        /// <param name="transform"><see cref="DetectableGameObject"/> transform</param>
-
+        /// <param name="transform"><see cref="DetectableGameObject" /> transform</param>
         public void DrawGizmos(Transform transform)
         {
             if (HasPoints())
             {
-                Matrix4x4 matrix = transform.localToWorldMatrix;
+                var matrix = transform.localToWorldMatrix;
 
                 for (int i = 0, n = m_ScanResultsByLOD.Count; i < n; i++)
                 {
-                    bool isSelectedLOD = i == m_SelectedLOD;
-                    Vector3 size = Vector3.one * (isSelectedLOD ? 0.05f : 0.025f);
+                    var isSelectedLOD = i == m_SelectedLOD;
+                    var size = Vector3.one * (isSelectedLOD ? 0.05f : 0.025f);
                     Gizmos.color = isSelectedLOD ? Color.red : Color.grey;
 
                     var localPoints = m_ScanResultsByLOD[i].LocalPoints;
                     foreach (var point in localPoints)
                     {
-                        Vector3 p = matrix.MultiplyPoint3x4(point);
+                        var p = matrix.MultiplyPoint3x4(point);
                         Gizmos.DrawCube(p, size);
                     }
 
@@ -306,10 +207,10 @@ namespace Sensors.Grid
 
                 if (m_DrawGrid >= 0.1f)
                 {
-                    Vector3 scale = Vector3.one * m_DrawGrid;
+                    var scale = Vector3.one * m_DrawGrid;
 
-                    Color colWire = Color.blue * 0.75f;
-                    Color colFill = Color.blue * 0.4f;
+                    var colWire = Color.blue * 0.75f;
+                    var colFill = Color.blue * 0.4f;
 
                     var worldPoints = GetWorldPoints(transform);
                     var filterDuplicates = new HashSet<Vector3>();
@@ -332,5 +233,90 @@ namespace Sensors.Grid
                 }
             }
         }
+
+
+        #region Point Collections
+
+        // Created by ShapeScanUtil.
+        [SerializeField] [HideInInspector] private List<ScanResultLOD> m_ScanResultsByLOD;
+
+        // References ScanResultLOD[LOD].LocalPoints
+        [SerializeField] [HideInInspector] private List<Vector3> m_LocalPoints;
+
+        // On demand: m_LocalPoints -> world.
+        [SerializeField] [HideInInspector] private List<Vector3> m_WorldPoints = new();
+
+        /// <summary>
+        ///     Whether there are any points stored.
+        /// </summary>
+        /// <returns></returns>
+        private bool HasPoints() => m_ScanResultsByLOD != null && m_ScanResultsByLOD.Count > 0;
+
+        /// <summary>
+        ///     Removes all shape points.
+        /// </summary>
+        private void Clear()
+        {
+            if (HasPoints())
+            {
+                m_ScanResultsByLOD.Clear();
+                m_WorldPoints.Clear();
+                m_LocalPoints.Clear();
+            }
+        }
+
+        #endregion
+
+
+        #region LOD
+
+        // The highest available LOD given the current Scan LOD setting.
+        [SerializeField] [HideInInspector] private int m_MaxLOD;
+
+        // The LOD used for selecting a point list from the scan result.
+        [SerializeField] [HideInInspector] private int m_SelectedLOD;
+
+
+        /// <summary>
+        ///     The LOD applied to the <see cref="ShapeScanUtil" />.
+        /// </summary>
+        public int ScanLOD => m_ScanLOD;
+
+        [SerializeField]
+        [EnableIf("IsNotPlaying")]
+        [OnValueChanged(nameof(OnScanLODChange))]
+        [AllowNesting]
+        [Tooltip("Scan level of detail.")]
+        [Range(0, 7)]
+        private int m_ScanLOD;
+
+        private void OnScanLODChange()
+        {
+            // Gizmo LOD follows Scan LOD inspector value.
+            m_GizmoLOD = m_ScanLOD;
+            RequireScanEvent.Invoke();
+
+            OnGizmoLODChange();
+        }
+
+        // The LOD used for highlighting Gizmo points.
+        [SerializeField]
+        [EnableIf(EConditionOperator.And, "IsNotPlaying", "Is3D")]
+        [OnValueChanged(nameof(OnGizmoLODChange))]
+        [AllowNesting]
+        [Tooltip("Gizmo level of detail <= Scan LOD.")]
+        [Range(0, 7)]
+        private int m_GizmoLOD;
+
+        private void OnGizmoLODChange()
+        {
+            // Gizmo LOD can't be higher than Scan LOD.
+            m_GizmoLOD = Mathf.Clamp(m_GizmoLOD, 0, m_ScanLOD);
+            // Need to select matching point list after 
+            // inspector settings change.
+            SetSelectedLOD(m_GizmoLOD);
+        }
+
+        #endregion
     }
 }

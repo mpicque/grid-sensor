@@ -1,67 +1,79 @@
-﻿using Unity.MLAgents.Sensors;
-using UnityEngine;
+﻿using System;
 using System.Collections.Generic;
-using System;
+using Unity.MLAgents.Sensors;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Sensors.Grid
 {
     /// <summary>
-    /// Sensor that generates visual observations 
-    /// from <see cref="GridBuffer"/> contents.
+    ///     Sensor that generates visual observations
+    ///     from <see cref="GridBuffer" /> contents.
     /// </summary>
     public class GridSensor : ISensor, IDisposable
     {
         /// <summary>
-        /// Invoked on <see cref="ISensor.Update"/>.
+        ///     Invoked on <see cref="ISensor.Update" />.
         /// </summary>
         public event Action UpdateEvent;
 
         /// <summary>
-        /// Invoked on <see cref="ISensor.Reset"/>.
+        ///     Invoked on <see cref="ISensor.Reset" />.
         /// </summary>
         public event Action ResetEvent;
 
         /// <summary>
-        /// Optional <see cref="IDetector"/> to use for the sensor.
+        ///     Optional <see cref="IDetector" /> to use for the sensor.
         /// </summary>
         public IDetector Detector { get; private set; }
 
         /// <summary>
-        /// Optional <see cref="IEncoder"/> to use for the sensor.
+        ///     Optional <see cref="IEncoder" /> to use for the sensor.
         /// </summary>
         public IEncoder Encoder { get; private set; }
 
         /// <summary>
-        /// Whether the sensor utilizes <see cref="Detector"/> and <see cref="Encoder"/>.
+        ///     Whether the sensor utilizes <see cref="Detector" /> and <see cref="Encoder" />.
         /// </summary>
         public bool AutoDetectionEnabled { get; private set; }
 
         /// <summary>
-        /// The <see cref="SensorCompressionType"/> type used by the sensor.
+        ///     The <see cref="SensorCompressionType" /> type used by the sensor.
         /// </summary>
         public SensorCompressionType CompressionType
         {
-            get { return m_CompressionType; }
-            set { m_CompressionType = value; HandleCompressionType(); }
+            get => m_CompressionType;
+            set
+            {
+                m_CompressionType = value;
+                HandleCompressionType();
+            }
         }
+
         private SensorCompressionType m_CompressionType;
 
 
         private readonly string m_Name;
         private readonly GridBuffer m_GridBuffer;
+
         private readonly ObservationSpec m_ObservationSpec;
+
         // PNG compression.
         private Texture2D m_PerceptionTexture;
         private List<byte> m_CompressedObs;
 
         /// <summary>
-        /// Creates a <see cref="GridSensor"/> instance.
+        ///     Creates a <see cref="GridSensor" /> instance.
         /// </summary>
-        /// <param name="buffer">The <see cref="GridBuffer"/> instance to wrap</param>
-        /// <param name="compressionType">The <see cref="SensorCompressionType"/> 
-        /// to apply to the generated image</param>
-        /// <param name="observationType">The <see cref="ObservationType"/> 
-        /// (default or goal signal) of the sensor</param>
+        /// <param name="buffer">The <see cref="GridBuffer" /> instance to wrap</param>
+        /// <param name="compressionType">
+        ///     The <see cref="SensorCompressionType" />
+        ///     to apply to the generated image
+        /// </param>
+        /// <param name="observationType">
+        ///     The <see cref="ObservationType" />
+        ///     (default or goal signal) of the sensor
+        /// </param>
         /// <param name="name">Name of the sensor</param>
         public GridSensor(
             string name,
@@ -78,14 +90,18 @@ namespace Sensors.Grid
             HandleCompressionType();
 
             m_ObservationSpec = ObservationSpec.Visual(
-                m_GridBuffer.Height, m_GridBuffer.Width, m_GridBuffer.NumChannels, observationType);
+                m_GridBuffer.NumChannels, m_GridBuffer.Height, m_GridBuffer.Width, observationType);
         }
 
         /// <summary>
-        /// Add <see cref="Detector"/> and <see cref="Encoder"/> for auto-detection on <see cref="Update"/>.
+        ///     Add <see cref="Detector" /> and <see cref="Encoder" /> for auto-detection on <see cref="Update" />.
         /// </summary>
-        /// <param name="detector"><see cref="IDetector"/></param>
-        /// <param name="encoder"><see cref="IEncoder"/></param>
+        /// <param name="detector">
+        ///     <see cref="IDetector" />
+        /// </param>
+        /// <param name="encoder">
+        ///     <see cref="IEncoder" />
+        /// </param>
         public void EnableAutoDetection(IDetector detector, IEncoder encoder)
         {
             Detector = detector;
@@ -99,32 +115,23 @@ namespace Sensors.Grid
 
             if (m_CompressionType == SensorCompressionType.PNG)
             {
-                m_PerceptionTexture = new Texture2D(
+                m_PerceptionTexture = new(
                     m_GridBuffer.Width, m_GridBuffer.Height, TextureFormat.RGB24, false);
-                m_CompressedObs = new List<byte>(
+                m_CompressedObs = new(
                     m_GridBuffer.Width * m_GridBuffer.Height * m_GridBuffer.NumChannels);
             }
         }
 
-        /// <inheritdoc/>
-        public string GetName()
-        {
-            return m_Name;
-        }
+        /// <inheritdoc />
+        public string GetName() => m_Name;
 
-        /// <inheritdoc/>
-        public ObservationSpec GetObservationSpec()
-        {
-            return m_ObservationSpec;
-        }
+        /// <inheritdoc />
+        public ObservationSpec GetObservationSpec() => m_ObservationSpec;
 
-        /// <inheritdoc/>
-        public CompressionSpec GetCompressionSpec()
-        {
-            return new CompressionSpec(CompressionType);
-        }
+        /// <inheritdoc />
+        public CompressionSpec GetCompressionSpec() => new(CompressionType);
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         public byte[] GetCompressedObservation()
         {
             m_CompressedObs.Clear();
@@ -139,19 +146,19 @@ namespace Sensors.Grid
             return m_CompressedObs.ToArray();
         }
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         public int Write(ObservationWriter writer)
         {
-            int numWritten = 0;
-            int w = m_GridBuffer.Width;
-            int h = m_GridBuffer.Height;
-            int n = m_GridBuffer.NumChannels;
+            var numWritten = 0;
+            var w = m_GridBuffer.Width;
+            var h = m_GridBuffer.Height;
+            var n = m_GridBuffer.NumChannels;
 
-            for (int c = 0; c < n; c++)
+            for (var c = 0; c < n; c++)
             {
-                for (int x = 0; x < w; x++)
+                for (var x = 0; x < w; x++)
                 {
-                    for (int y = 0; y < h; y++)
+                    for (var y = 0; y < h; y++)
                     {
                         writer[y, x, c] = m_GridBuffer.Read(c, x, y);
                         numWritten++;
@@ -162,8 +169,8 @@ namespace Sensors.Grid
             return numWritten;
         }
 
-        /// <inheritdoc/>
-        public virtual void Update() 
+        /// <inheritdoc />
+        public virtual void Update()
         {
             if (AutoDetectionEnabled)
             {
@@ -174,15 +181,15 @@ namespace Sensors.Grid
             UpdateEvent?.Invoke();
         }
 
-        /// <inheritdoc/>
-        public virtual void Reset() 
+        /// <inheritdoc />
+        public virtual void Reset()
         {
             Detector?.OnSensorReset();
             ResetEvent?.Invoke();
         }
 
         /// <summary>
-        /// Cleans up internal objects.
+        ///     Cleans up internal objects.
         /// </summary>
         public void Dispose()
         {
@@ -196,11 +203,11 @@ namespace Sensors.Grid
                 if (Application.isEditor)
                 {
                     // Edit Mode tests complain if we use Destroy()
-                    UnityEngine.Object.DestroyImmediate(m_PerceptionTexture);
+                    Object.DestroyImmediate(m_PerceptionTexture);
                 }
                 else
                 {
-                    UnityEngine.Object.Destroy(m_PerceptionTexture);
+                    Object.Destroy(m_PerceptionTexture);
                 }
 
                 m_PerceptionTexture = null;
