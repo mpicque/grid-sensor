@@ -1,7 +1,7 @@
-using System.Collections.Generic;
-using System.Collections;
-using System.Linq;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using NaughtyAttributes;
 using Sensors.Util;
 using UnityEngine;
@@ -9,41 +9,42 @@ using UnityEngine;
 namespace Sensors.Grid
 {
     /// <summary>
-    /// Add this component to a gameobject for making it visible to the 
-    /// <see cref="GridSensorComponent2D"/> or <see cref="GridSensorComponent3D"/>.
-    /// A <see cref="DetectableGameObject"/> must have at least one enabled collider,
-    /// which can be attached to a nested gameobject.
+    ///     Add this component to a gameobject for making it visible to the
+    ///     <see cref="GridSensorComponent2D" /> or <see cref="GridSensorComponent3D" />.
+    ///     A <see cref="DetectableGameObject" /> must have at least one enabled collider,
+    ///     which can be attached to a nested gameobject.
     /// </summary>
     public class DetectableGameObject : MonoBehaviour, IDetectable, IDisposable
     {
-        /// <inheritdoc/>
-        public string Tag => tag;
-
-        /// <inheritdoc/>
-        public string Name => name;
-
-        private PhysicsScene m_PhysicsScene;
-        private IList<Collider> m_Colliders;
-        private bool m_IsCompound;
-        private bool m_IsCached;
-
-        [SerializeField, Tooltip("Optional settings for shape detection.")]
-        private GameObjectShape m_Shape = new GameObjectShape();
-
-        // Manage pending scans for ALL DetectableGameObject instances.
-        public static bool HasPendingScans => s_NumberOfPendingScans > 0;
-
         private const int c_MaxScansPerFrame = 5;
         private static int s_NumberOfPendingScans;
         private static int s_ScanStartFrameCount;
         private static float s_ScanStartTime;
         private static bool s_PendingScansQueued;
 
+        [SerializeField] [Tooltip("Optional settings for shape detection.")]
+        private GameObjectShape m_Shape = new();
+
+        private IList<Collider> m_Colliders;
+        private bool m_IsCached;
+        private bool m_IsCompound;
+
+        private PhysicsScene m_PhysicsScene;
+
+        // Manage pending scans for ALL DetectableGameObject instances.
+        public static bool HasPendingScans => s_NumberOfPendingScans > 0;
+
+        /// <inheritdoc />
+        public string Tag => tag;
+
+        /// <inheritdoc />
+        public string Name => name;
+
 
         /// <summary>
-        /// Sets detection state. Invoked after the <see cref="GameObjectDetector"/>
-        /// first encountered this object, wasDetected = true, via shared cache methods. 
-        /// Called again when cache is cleared, wasDetected = false.
+        ///     Sets detection state. Invoked after the <see cref="GameObjectDetector" />
+        ///     first encountered this object, wasDetected = true, via shared cache methods.
+        ///     Called again when cache is cleared, wasDetected = false.
         /// </summary>
         /// <param name="wasDetected">Detection state</param>
         public virtual void SetDetectionState(bool wasDetected)
@@ -60,12 +61,13 @@ namespace Sensors.Grid
                 {
                     RemoveFromCache();
                 }
+
                 m_Colliders.Clear();
             }
         }
 
         /// <summary>
-        /// Forces a new runtime shape scan.
+        ///     Forces a new runtime shape scan.
         /// </summary>
         public void ScanShapeRuntime(int waitFrames = 0)
         {
@@ -95,17 +97,17 @@ namespace Sensors.Grid
         {
             FindColliders();
 
-            int maxLOD = ShapeScanUtil.Scan(
+            var maxLOD = ShapeScanUtil.Scan(
                 m_PhysicsScene, transform, m_Colliders,
-                m_Shape, out List<ScanResultLOD> result);
+                m_Shape, out var result);
             m_Shape.OnScanResult(maxLOD, result);
 
             s_NumberOfPendingScans = Mathf.Max(0, s_NumberOfPendingScans - 1);
 
             if (s_PendingScansQueued && s_NumberOfPendingScans == 0)
             {
-                int df = Time.frameCount - s_ScanStartFrameCount;
-                float dt = Time.time - s_ScanStartTime;
+                var df = Time.frameCount - s_ScanStartFrameCount;
+                var dt = Time.time - s_ScanStartTime;
                 Debug.Log($"All shape scans completed after {df} frames / {dt} seconds.");
                 s_PendingScansQueued = false;
             }
@@ -115,14 +117,14 @@ namespace Sensors.Grid
         {
             m_Colliders = new List<Collider>(GetComponentsInChildren<Collider>());
 
-            for (int i = m_Colliders.Count - 1; i >= 0; i--)
+            for (var i = m_Colliders.Count - 1; i >= 0; i--)
             {
                 if (!m_Colliders[i].enabled)
                 {
                     m_Colliders.RemoveAt(i);
                 }
             }
-            
+
             Debug.Assert(m_Colliders.Count > 0, "No enabled colliders found on DetectableGameObject");
             m_IsCompound = m_Colliders.Count > 1;
         }
@@ -134,9 +136,9 @@ namespace Sensors.Grid
             {
                 if (!cld.CompareTag(tag))
                 {
-                    Debug.LogWarning($"A nested collider's tag must match its parent " +
-                        $"DetectableGameObject's tag. Changing '{cld.tag}' to '{tag}' " +
-                        $"for collider '{cld.name}'.");
+                    Debug.LogWarning("A nested collider's tag must match its parent " +
+                                     $"DetectableGameObject's tag. Changing '{cld.tag}' to '{tag}' " +
+                                     $"for collider '{cld.name}'.", cld.gameObject);
                     cld.tag = tag;
                 }
             }
@@ -145,19 +147,21 @@ namespace Sensors.Grid
 
         #region Custom Observables
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         public ObservableCollection Observables { get; private set; }
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         public virtual ObservableCollection InitObservables()
         {
-            Observables = new ObservableCollection();
+            Observables = new();
             AddObservables();
             return Observables;
         }
 
-        /// <inheritdoc/>
-        public virtual void AddObservables() { }
+        /// <inheritdoc />
+        public virtual void AddObservables()
+        {
+        }
 
         #endregion
 
@@ -165,36 +169,38 @@ namespace Sensors.Grid
         #region Detection
 
         /// <summary>
-        /// Returns the gameobject's position to the <see cref="GameObjectDetector"/>.
+        ///     Returns the gameobject's position to the <see cref="GameObjectDetector" />.
         /// </summary>
         /// <returns>Gameobject's position in world space</returns>
         public Vector3 GetWorldPosition() => transform.position;
 
         /// <summary>
-        /// Returns the closet point on the gameobject's collider(s) 
-        /// to the <see cref="GameObjectDetector"/>.
+        ///     Returns the closet point on the gameobject's collider(s)
+        ///     to the <see cref="GameObjectDetector" />.
         /// </summary>
         /// <param name="sensorPos">Sensor position in world space</param>
-        /// <param name="onBounds">Whether to get the closest point on the 
-        /// collider's bounds or on the collider itself</param>
+        /// <param name="onBounds">
+        ///     Whether to get the closest point on the
+        ///     collider's bounds or on the collider itself
+        /// </param>
         /// <returns>Closest point in world space</returns>
         public Vector3 GetClosestWorldPoint(Vector3 sensorPos, bool onBounds = true)
         {
-            Vector3 closest = onBounds
+            var closest = onBounds
                 ? m_Colliders[0].ClosestPointOnBounds(sensorPos)
                 : m_Colliders[0].ClosestPoint(sensorPos);
 
             if (m_IsCompound)
             {
-                float min = (closest - sensorPos).sqrMagnitude;
+                var min = (closest - sensorPos).sqrMagnitude;
 
                 for (int i = 1, n = m_Colliders.Count; i < n; i++)
                 {
-                    Vector3 p = onBounds
+                    var p = onBounds
                         ? m_Colliders[i].ClosestPointOnBounds(sensorPos)
                         : m_Colliders[i].ClosestPoint(sensorPos);
 
-                    float d = (p - sensorPos).sqrMagnitude;
+                    var d = (p - sensorPos).sqrMagnitude;
                     if (d < min)
                     {
                         min = d;
@@ -207,14 +213,11 @@ namespace Sensors.Grid
         }
 
         /// <summary>
-        /// Returns the <see cref="GameObjectShape"/> points to the <see cref="GameObjectDetector"/>.
+        ///     Returns the <see cref="GameObjectShape" /> points to the <see cref="GameObjectDetector" />.
         /// </summary>
         /// <param name="normDistance">Normalized distance between gameobject and sensor</param>
         /// <returns>List of points in world space</returns>
-        public IList<Vector3> GetShapeWorldPoints(float normDistance)
-        {
-            return m_Shape.GetWorldPointsAtDistance(transform, normDistance);
-        }
+        public IList<Vector3> GetShapeWorldPoints(float normDistance) => m_Shape.GetWorldPointsAtDistance(transform, normDistance);
 
         #endregion
 
@@ -246,9 +249,9 @@ namespace Sensors.Grid
             // https://forum.unity.com/threads/raycast-in-the-prefab-scene.647548/#post-4339375
             var scene = gameObject.scene;
             m_PhysicsScene = scene.IsValid() &&
-                PhysicsSceneExtensions.GetPhysicsScene(scene).IsValid()
-                    ? PhysicsSceneExtensions.GetPhysicsScene(scene)
-                    : Physics.defaultPhysicsScene;
+                             scene.GetPhysicsScene().IsValid()
+                ? scene.GetPhysicsScene()
+                : Physics.defaultPhysicsScene;
 
             m_Shape.RequireScanEvent -= ScanShape;
             m_Shape.RequireScanEvent += ScanShape;
@@ -271,7 +274,7 @@ namespace Sensors.Grid
         }
 
         /// <summary>
-        /// Cleans up internal objects.
+        ///     Cleans up internal objects.
         /// </summary>
         public void Dispose()
         {
@@ -294,13 +297,13 @@ namespace Sensors.Grid
             = new Dictionary<Collider, DetectableGameObject>(); // capacity?
 
         /// <summary>
-        /// Returns a <see cref="DetectableGameObject"/> instance from the cache.
+        ///     Returns a <see cref="DetectableGameObject" /> instance from the cache.
         /// </summary>
         /// <param name="collider">The detected collider</param>
-        /// <returns><see cref="DetectableGameObject"/> associated with collider</returns>
+        /// <returns><see cref="DetectableGameObject" /> associated with collider</returns>
         public static DetectableGameObject GetCached(Collider collider)
         {
-            if (s_SharedCache.TryGetValue(collider, out DetectableGameObject obj))
+            if (s_SharedCache.TryGetValue(collider, out var obj))
             {
                 return obj;
             }
@@ -329,7 +332,7 @@ namespace Sensors.Grid
         }
 
         /// <summary>
-        /// Clears the cache and resets all stored <see cref="DetectableGameObject"/>s' detection states.
+        ///     Clears the cache and resets all stored <see cref="DetectableGameObject" />s' detection states.
         /// </summary>
         public static void ClearCache()
         {
@@ -344,7 +347,7 @@ namespace Sensors.Grid
             if (s_SharedCache.Count > 0)
             {
                 Debug.LogWarning("Orphaned DetectableGameObjects found in cache " +
-                    string.Join(", ", s_SharedCache.Values.Distinct().Select(o => o.name).ToArray()));
+                                 string.Join(", ", s_SharedCache.Values.Distinct().Select(o => o.name).ToArray()));
 
                 s_SharedCache.Clear();
             }
@@ -388,12 +391,12 @@ namespace Sensors.Grid
     }
 
     /// <summary>
-    /// Invokes callback after all pending scans are complete.
+    ///     Invokes callback after all pending scans are complete.
     /// </summary>
     public class InvokeOnShapeScansComplete : CustomYieldInstruction
     {
         /// <summary>
-        /// Invokes callback after all pending scans are complete.
+        ///     Invokes callback after all pending scans are complete.
         /// </summary>
         /// <param name="context">The MonoBehaviour</param>
         /// <param name="callback">The callback method</param>
